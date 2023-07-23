@@ -38,4 +38,9 @@ contract MusicNFTMarketplace is ERC721("ShrodyBuck", "Shrody"), Ownable {
             marketItems.push(MarketItem(i, payable(msg.sender), _prices[i])); //msg.sender -> deployer here
         }
     }
+
+    //checks only the deployer can call this contract
+    function updateRoyaltyFee(uint256 _royaltyFee) external onlyOwner {
+        royaltyFee = _royaltyFee;
+    }
 }
