@@ -20,6 +20,13 @@ contract MusicNFTMarketplace is ERC721("ShrodyBuck", "Shrody"), Ownable {
     }
     MarketItem[] public marketItems;
 
+    event MarketItemBought(
+        uint256 indexed tokenId,
+        address indexed seller,
+        address buyer,
+        uint256 price
+    );
+
     //the deployer will be the initial seller of each nft and will have to pay royalty fee that is why it is marked payable
     constructor(
         uint256 _royaltyFee,
@@ -42,5 +49,22 @@ contract MusicNFTMarketplace is ERC721("ShrodyBuck", "Shrody"), Ownable {
     //checks only the deployer can call this contract
     function updateRoyaltyFee(uint256 _royaltyFee) external onlyOwner {
         royaltyFee = _royaltyFee;
+    }
+
+    //creates the sale of a music nft listed on the marketplace
+    //transfers ownership of the nft as well as funds between parties
+    function buyToken(uint256 _tokenId) external payable {
+        uint256 price = marketItems[_tokenId].price;
+        address seller = marketItems[_tokenId].seller;
+        require(
+            msg.value == price,
+            "Please send the asking price in order to complete the purchase"
+        );
+        marketItems[_tokenId].seller = payable(address(0)); //since the item is being bought it is no longer being sold
+        _transfer(address(this), msg.sender, _tokenId); //why not seller address instead of (addreess(this))
+        payable(artist).transfer(royaltyFee); //who is paying them
+        payable(seller).transfer(msg.value); //why full value?
+
+        emit MarketItemBought(_tokenId, seller, msg.sender, price);
     }
 }
