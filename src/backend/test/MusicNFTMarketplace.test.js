@@ -80,4 +80,41 @@ describe("MusicNFTMarketplace", function () {
       expect(await nftMarketplace.royaltyFee()).to.equal(fee);
     });
   });
+
+  describe("Buying tokens", function () {
+    it("Should update seller to zero address, transfer NFT, pay seller, pay royalty to artist and emit a MarketItemBought event", async function () {
+      const deployerInitalEthBal = await deployer.getBalance();
+      const artistInitialEthBal = await artist.getBalance();
+      // user1 purchases item.
+      await expect(
+        nftMarketplace.connect(user1).buyToken(0, { value: prices[0] })
+      )
+        .to.emit(nftMarketplace, "MarketItemBought")
+        .withArgs(0, deployer.address, user1.address, prices[0]);
+      const deployerFinalEthBal = await deployer.getBalance();
+      const artistFinalEthBal = await artist.getBalance();
+      // Item seller should be zero addr
+      expect((await nftMarketplace.marketItems(0)).seller).to.equal(
+        "0x0000000000000000000000000000000000000000"
+      );
+      // Seller should receive payment for the price of the NFT sold.
+      expect(+fromWei(deployerFinalEthBal)).to.equal(
+        +fromWei(prices[0]) + +fromWei(deployerInitalEthBal)
+      );
+      // Artist should receive royalty
+      expect(+fromWei(artistFinalEthBal)).to.equal(
+        +fromWei(royaltyFee) + +fromWei(artistInitialEthBal)
+      );
+      // The buyer should now own the nft
+      expect(await nftMarketplace.ownerOf(0)).to.equal(user1.address);
+    });
+    it("Should fail when ether amount sent with transaction does not equal asking price", async function () {
+      // Fails when ether sent does not equal asking price
+      await expect(
+        nftMarketplace.connect(user1).buyToken(0, { value: prices[1] })
+      ).to.be.revertedWith(
+        "Please send the asking price in order to complete the purchase"
+      );
+    });
+  });
 });
