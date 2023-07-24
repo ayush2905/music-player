@@ -117,4 +117,48 @@ describe("MusicNFTMarketplace", function () {
       );
     });
   });
+  describe("Reselling tokens", function () {
+    beforeEach(async function () {
+      // user1 purchases an item.
+      await nftMarketplace.connect(user1).buyToken(0, { value: prices[0] });
+    });
+
+    it("Should track resale item, incr. ether bal by royalty fee, transfer NFT to marketplace and emit MarketItemRelisted event", async function () {
+      const resaleprice = toWei(2);
+      const initMarketBal = await ethers.provider.getBalance(
+        nftMarketplace.address
+      );
+      // user1 lists the nft for a price of 2 hoping to flip it and double their money
+      await expect(
+        nftMarketplace
+          .connect(user1)
+          .resellToken(0, resaleprice, { value: royaltyFee })
+      )
+        .to.emit(nftMarketplace, "MarketItemRelisted")
+        .withArgs(0, user1.address, resaleprice);
+      const finalMarketBal = await ethers.provider.getBalance(
+        nftMarketplace.address
+      );
+      // Expect final market bal to equal inital + royalty fee
+      expect(+fromWei(finalMarketBal)).to.equal(
+        +fromWei(royaltyFee) + +fromWei(initMarketBal)
+      );
+      // Owner of NFT should now be the marketplace
+      expect(await nftMarketplace.ownerOf(0)).to.equal(nftMarketplace.address);
+      // Get item from items mapping then check fields to ensure they are correct
+      const item = await nftMarketplace.marketItems(0);
+      expect(item.tokenId).to.equal(0);
+      expect(item.seller).to.equal(user1.address);
+      expect(item.price).to.equal(resaleprice);
+    });
+
+    it("Should fail if price is set to zero and royalty fee is not paid", async function () {
+      await expect(
+        nftMarketplace.connect(user1).resellToken(0, 0, { value: royaltyFee })
+      ).to.be.revertedWith("Price must be greater than zero");
+      await expect(
+        nftMarketplace.connect(user1).resellToken(0, toWei(1), { value: 0 })
+      ).to.be.revertedWith("Must pay royalty");
+    });
+  });
 });
