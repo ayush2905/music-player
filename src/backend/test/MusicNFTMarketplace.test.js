@@ -161,4 +161,58 @@ describe("MusicNFTMarketplace", function () {
       ).to.be.revertedWith("Must pay royalty");
     });
   });
+
+  describe("Getter functions", function () {
+    let soldItems = [0, 1, 4];
+    let ownedByUser1 = [0, 1];
+    let ownedByUser2 = [4];
+    beforeEach(async function () {
+      // user1 purchases item 0.
+      await (
+        await nftMarketplace.connect(user1).buyToken(0, { value: prices[0] })
+      ).wait();
+      // user1 purchases item 1.
+      await (
+        await nftMarketplace.connect(user1).buyToken(1, { value: prices[1] })
+      ).wait();
+      // user2 purchases item 4.
+      await (
+        await nftMarketplace.connect(user2).buyToken(4, { value: prices[4] })
+      ).wait();
+    });
+
+    it("getAllUnsoldTokens should fetch all the marketplace items up for sale", async function () {
+      const unsoldItems = await nftMarketplace.getAllUnsoldTokens();
+      // Check to make sure that all the returned unsoldItems have filtered out the sold items.
+      expect(
+        unsoldItems.every(
+          (i) => !soldItems.some((j) => j === i.tokenId.toNumber())
+        )
+      ).to.equal(true);
+      // Check that the length is correct
+      expect(unsoldItems.length === prices.length - soldItems.length).to.equal(
+        true
+      );
+    });
+    it("getMyTokens should fetch all tokens the user owns", async function () {
+      // Get items owned by user1
+      let myItems = await nftMarketplace.connect(user1).getMyTokens();
+      // Check that the returned my items array is correct
+      expect(
+        myItems.every((i) =>
+          ownedByUser1.some((j) => j === i.tokenId.toNumber())
+        )
+      ).to.equal(true);
+      expect(ownedByUser1.length === myItems.length).to.equal(true);
+      // Get items owned by user2
+      myItems = await nftMarketplace.connect(user2).getMyTokens();
+      // Check that the returned my items array is correct
+      expect(
+        myItems.every((i) =>
+          ownedByUser2.some((j) => j === i.tokenId.toNumber())
+        )
+      ).to.equal(true);
+      expect(ownedByUser2.length === myItems.length).to.equal(true);
+    });
+  });
 });
